@@ -61,6 +61,10 @@
   .seg button{border:0;background:transparent;color:var(--text);padding:9px 12px;font:800 14px var(--font);cursor:pointer}
   .seg button.on{background:var(--blue)}
   .lbl{color:var(--muted);font-weight:600;font-size:13px}
+  .seg.wide{display:flex;width:100%}
+  .seg.wide button{flex:1;padding:9px 6px}
+  .opts textarea{width:100%;background:rgba(255,255,255,.08);border:1px solid var(--line);color:#fff;border-radius:10px;padding:8px;font:600 14px var(--font);resize:vertical}
+  .opts label input[type=text]{flex:1}
   .fx{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
   .fxi{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 8px;background:rgba(255,255,255,.04)}
   .fxi label{flex:1;display:flex;gap:6px;align-items:center;cursor:pointer;font-weight:800;font-size:13px;line-height:1.2}
@@ -108,6 +112,7 @@
       <li>👏 <b>Vỗ tay 2 cái</b> liên tiếp → khẩu hiệu giữa màn hình</li>
       <li>🫶 <b>Hai tay tạo trái tim</b> hoặc 👍 <b>giơ ngón cái</b> → “Theo dõi CNQ nhé!”</li>
     </ul>
+    <p class="lead" style="margin-top:-4px">Trong bảng còn: <b>✍️ Viết tên</b> (vẽ tên trên không hoặc gõ tên), <b>💧 Vạn Giọt</b> (bầy hạt theo tay) và <b>🎞 Đoạn mở đầu 3 giây</b>.</p>
     <button id="startBtn" class="big">Bật camera</button>
     <div id="startMsg"></div>
     <div class="priv">🔒 Hình ảnh được xử lý ngay trên máy này, không gửi đi đâu.</div>
@@ -126,7 +131,38 @@
     <button class="btn" id="flipBtn">🔄 Đổi camera</button>
     <button class="btn" id="fsBtn">⛶</button>
   </div>
-  <div class="fx" id="fxList"></div>
+  <div class="row">
+    <div class="seg wide" id="modeSeg"><button data-m="fx" class="on">✨ Hiệu ứng</button><button data-m="write">✍️ Viết tên</button><button data-m="drops">💧 Vạn Giọt</button></div>
+  </div>
+  <div class="row">
+    <span class="lbl">Hạt</span>
+    <div class="seg" id="styleSeg"><button data-s="sword">⚔️ Kiếm</button><button data-s="drop" class="on">💧 Giọt nước</button></div>
+    <button class="btn" id="bgBtn">🌙 Nền tối</button>
+  </div>
+  <div id="secFx"><div class="fx" id="fxList"></div></div>
+  <div id="secWrite" style="display:none">
+    <div class="row"><div class="seg wide" id="wkSeg"><button data-k="A" class="on">A · Viết trên không</button><button data-k="B">B · Gõ tên</button></div></div>
+    <div id="wA">
+      <div class="hint">☝️ Giơ <b>ngón trỏ</b> = vẽ · ✊ <b>nắm tay</b> = dừng vẽ · 🖐 <b>xòe bàn tay</b> = hạt xếp theo nét, giữ 3 giây rồi tan.</div>
+      <div class="row"><button class="btn primary grow" id="formBtn">▶ Xếp theo nét</button><button class="btn grow" id="clearBtn">🧽 Xóa nét</button></div>
+    </div>
+    <div id="wB" style="display:none">
+      <div class="opts">
+        <label>Tên <input type="text" id="nmName" maxlength="24" value="Châu Nhật Quân" placeholder="Tối đa ~20 ký tự"></label>
+        <label>Dòng phụ <input type="text" id="nmSub" maxlength="40" value="Chúc mừng đã biết bơi!"></label>
+        <textarea id="nmList" rows="3" placeholder="Danh sách tên — mỗi dòng 1 tên, bấm “Tên kế tiếp” để đổi"></textarea>
+      </div>
+      <div class="hint">👋 <b>Vung tay</b> mạnh, hoặc ✊ <b>nắm tay rồi mở bung</b> 🖐 → hạt bay ra từ bàn tay, xếp thành tên.</div>
+      <div class="row"><button class="btn primary grow" id="nameBtn">▶ Xếp tên</button><button class="btn grow" id="nextBtn">⏭ Tên kế tiếp</button></div>
+    </div>
+  </div>
+  <div id="secDrops" style="display:none"><div class="fx" id="dropList"></div></div>
+  <div class="row">
+    <span class="lbl">🎞 Mở đầu 3s</span>
+    <button class="btn grow" id="introDark">▶ Nền tối</button>
+    <button class="btn grow" id="introCam">▶ Trên camera</button>
+    <label class="lbl" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="introRec" checked style="accent-color:#087EF5"> Ghi .mp4</label>
+  </div>
   <details>
     <summary>Tuỳ chọn thêm</summary>
     <div class="opts">
@@ -198,6 +234,7 @@ function setFormat(f){
   g.addColorStop(0, 'rgba(7,30,49,0)'); g.addColorStop(1, 'rgba(7,30,49,0.55)');
   v.fillStyle = g; v.fillRect(0,0,W,H);
   fitStage();
+  initSwarm(); WR.strokes = []; SW.shape = null;
   try { localStorage.setItem('cnqfx-fmt', f); } catch(e){}
 }
 function fitStage(){
@@ -348,6 +385,7 @@ function onPose(res, now){
     np[k] = { x, y, z: lm[i].z, v, vx: o ? (x - o.x)/dtp : 0, vy: o ? (y - o.y)/dtp : 0 };
   }
   T.pose = np; T.poseAt = now;
+  recordWrists(now);
 }
 function onHands(res, now){
   const hs = [];
@@ -357,6 +395,7 @@ function onHands(res, now){
     const scale = Math.hypot(pts[9].x - pts[0].x, pts[9].y - pts[0].y);
     hs.push({ pts, wrist: pts[0], center: pts[9], gesture: g ? g.categoryName : 'None', score: g ? g.score : 0, scale });
   });
+  updatePrimaryHand(hs, now);
   if (hs.length || now - T.handsAt > 400){ T.hands = hs; }
   if (hs.length) T.handsAt = now;
 }
@@ -387,7 +426,7 @@ function bodyMetrics(p){
 }
 
 function detectGestures(now){
-  if (!armed) return;
+  if (!armed || mode !== 'fx' || SW.intro) return;
   const p = T.pose, hands = T.hands;
   const fistNow = hands.some(h => h.gesture === 'Closed_Fist' && h.score > 0.55);
   let dbg = '';
@@ -927,7 +966,8 @@ function loop(now){
     const ts = Math.max(now, lastInfer + 1); lastInfer = ts;
     const t0 = performance.now();
     try {
-      if (tick % 3 !== 2) onPose(pose.detectForVideo(video, ts), now);
+      const poseTurn = mode === 'fx' ? tick % 3 !== 2 : tick % 3 === 2;
+      if (poseTurn) onPose(pose.detectForVideo(video, ts), now);
       else onHands(gesture.recognizeForVideo(video, ts), now);
     } catch(e){ console.warn(e); }
     tick++;
@@ -937,17 +977,22 @@ function loop(now){
     if (now - T.poseAt > 400) T.pose = null;
     if (now - T.handsAt > 400) T.hands = [];
     detectGestures(now);
+    detectSwarm(now);
   }
   // vẽ camera
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = C.navy; ctx.fillRect(0, 0, W, H);
-  if (video.videoWidth){
-    ctx.save();
-    if (mirror){ ctx.translate(W, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(video, vmap.ox, vmap.oy, vmap.dw, vmap.dh);
-    ctx.restore();
+  if (SW.bgDark) drawDarkBg(now);
+  else {
+    ctx.fillStyle = C.navy; ctx.fillRect(0, 0, W, H);
+    if (video.videoWidth){
+      ctx.save();
+      if (mirror){ ctx.translate(W, 0); ctx.scale(-1, 1); }
+      ctx.drawImage(video, vmap.ox, vmap.oy, vmap.dw, vmap.dh);
+      ctx.restore();
+    }
+    ctx.drawImage(vignette, 0, 0);
   }
-  ctx.drawImage(vignette, 0, 0);
+  swarmFrame(dt, now);
   // hiệu ứng
   updateParticles(dt);
   if (active){
@@ -956,6 +1001,7 @@ function loop(now){
     else EFFECTS[active.id].draw.call(EFFECTS[active.id], active, t, dt);
   }
   drawParticles();
+  if (SW.bgDark && !SW.intro) drawFingerDots();
   if ($('#optTag').checked) drawTag();
   if ($('#optDebug').checked) drawDebug();
   // thống kê
@@ -964,7 +1010,7 @@ function loop(now){
   if (now - statusAt > 500){
     statusAt = now;
     $('#status').textContent = `Người: ${T.pose ? '✓' : '—'} · Bàn tay: ${T.hands.length} · ${fps} khung/giây` +
-      (Q < 1 ? ' · đã giảm hạt cho mượt' : '') + (armed ? '' : ' · đang đếm ngược');
+      (mode !== 'fx' ? ` · Hạt: ${SW.n} · Tay: ${({point:'chỉ ☝️',fist:'nắm ✊',open:'xòe 🖐',thumb:'👍',other:'…',none:'—'})[PH.has ? PH.cls : 'none'] || '…'}` : (Q < 1 ? ' · đã giảm hạt cho mượt' : '')) + (armed ? '' : ' · đang chờ');
   }
 }
 
@@ -1013,11 +1059,12 @@ document.addEventListener('pointerdown', e => {
   if (taps.length >= 3){ taps = []; setPanel($('#panel').classList.contains('hidden')); }
 });
 addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
+  if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) return;
   const k = e.key.toLowerCase();
   if (k === 'h') setPanel($('#panel').classList.contains('hidden'));
   else if (k === 'c') startShoot();
   else if (k === 'r') toggleRec();
+  else if (mode !== 'fx') swarmKey(k);
   else { const f = FX.find(f => f.key === k); if (f) testFx(f.id); }
 });
 
@@ -1097,9 +1144,676 @@ if (!canRecord()){ $('#recBtn').disabled = true; $('#recBtn').title = 'Trình du
 $('#shareBtn').onclick = async () => { try { await navigator.share({ files:[lastFile], title:'Clip CNQ' }); } catch(e){} };
 $('#closeSave').onclick = () => { $('#saveBox').style.display = 'none'; $('#saveVid').pause(); };
 
+/* =================== BẦY HẠT: Phép viết tên · Vạn Giọt · Đoạn mở đầu =================== */
+const isMobile = matchMedia('(pointer:coarse)').matches || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+const MAXN = 4000;
+const SW = {
+  nMax: isMobile ? 2600 : 4000, n: isMobile ? 1600 : 2800,
+  style: 'drop', state: 'float', t0: 0, alpha: 0, fade: 0,
+  center: { x: 360, y: 640 }, hasCenter: false, lastCenter: 0,
+  sphereC: { x: 360, y: 500 }, sphereTarget: null, sphereR: 72,
+  shape: null, paths: null, intro: null, bgDark: false, cost: 4,
+};
+let mode = 'fx', writeKind = 'A';
+const F32 = () => new Float32Array(MAXN);
+const X = F32(), Y = F32(), VX = F32(), VY = F32(), ANG = F32(), R1 = F32(), R2 = F32(), R3 = F32();
+const HX = F32(), HY = F32(), UX = F32(), UY = F32(), UZ = F32(), DEP = F32(), DL = F32();
+const COL = new Uint8Array(MAXN), TI = new Int32Array(MAXN);
+const swarmOn = () => mode !== 'fx' || !!SW.intro;
+
+/* --- ảnh hạt: giọt nước (5 màu) và kiếm sáng (atlas 32 góc × 5 màu) --- */
+const ANGS = 32, CELL = 40;
+let DSPR = [], SATLAS = null;
+function buildSprites(){
+  DSPR = [
+    sprite('rgba(235,248,255,1)', 'rgba(8,126,245,.8)'),     // 0 xanh CNQ
+    sprite('rgba(240,250,255,1)', 'rgba(86,180,255,.7)'),    // 1 xanh nhạt
+    sprite('rgba(255,236,215,1)', 'rgba(255,122,36,.8)'),    // 2 cam
+    sprite('rgba(255,255,255,1)', 'rgba(200,230,255,.6)'),   // 3 trắng
+    sprite('rgba(220,255,240,1)', 'rgba(10,167,109,.8)'),    // 4 xanh lá
+  ];
+  SATLAS = document.createElement('canvas'); SATLAS.width = ANGS*CELL; SATLAS.height = 5*CELL;
+  const g = SATLAS.getContext('2d');
+  const cols = [['#FFE07A','#B8901C'], ['#A6F5B8','#2A9A5A'], ['#FFC27A','#D9700E'], ['#FFFBEA','#D9C26A'], ['#7FE3B8','#0A8F5D']];
+  cols.forEach(([light, dark], ci) => {
+    for (let a = 0; a < ANGS; a++){
+      g.save(); g.translate(a*CELL + CELL/2, ci*CELL + CELL/2); g.rotate(a/ANGS*Math.PI*2);
+      g.shadowColor = light; g.shadowBlur = 6;
+      const gr = g.createLinearGradient(-5, 0, 17, 0); gr.addColorStop(0, light); gr.addColorStop(1, '#FFFFFF');
+      g.fillStyle = gr; g.beginPath(); g.moveTo(17, 0); g.lineTo(-5, -2.6); g.lineTo(-5, 2.6); g.closePath(); g.fill();
+      g.fillStyle = light; g.fillRect(-7.5, -6, 2.5, 12);
+      g.fillStyle = dark; g.fillRect(-14, -1.4, 6.5, 2.8);
+      g.beginPath(); g.arc(-15, 0, 2, 0, Math.PI*2); g.fill();
+      g.restore();
+    }
+  });
+}
+function rndHome(i){ HX[i] = W*(0.04 + 0.92*Math.random()); HY[i] = H*(0.06 + 0.88*Math.random()); }
+function initSwarm(){
+  for (let i = 0; i < MAXN; i++){
+    R1[i] = Math.random(); R2[i] = Math.random(); R3[i] = Math.random();
+    rndHome(i); X[i] = HX[i]; Y[i] = HY[i]; VX[i] = VY[i] = 0; ANG[i] = -Math.PI/2; DEP[i] = 1;
+    const u = Math.random()*2 - 1, th = Math.random()*Math.PI*2, s = Math.sqrt(1 - u*u);
+    UX[i] = s*Math.cos(th); UY[i] = u; UZ[i] = s*Math.sin(th);
+    const r = Math.random(); COL[i] = r < .55 ? 0 : r < .85 ? 1 : r < .96 ? 2 : 3;
+  }
+  SW.sphereR = BASE()*0.11; SW.center = { x: W/2, y: H/2 };
+}
+function setState(st){ SW.state = st; SW.t0 = performance.now(); }
+function idleState(){ return SW.intro ? 'float' : mode === 'write' ? 'follow' : 'float'; }
+function burst(cx, cy, power = 1){
+  for (let i = 0; i < SW.n; i++){
+    const dx = X[i] - cx, dy = Y[i] - cy, L = Math.hypot(dx, dy) || 1, sp = (250 + 800*R3[i])*power;
+    VX[i] += dx/L*sp + rnd(-90, 90); VY[i] += dy/L*sp + rnd(-90, 90);
+  }
+  SW.fade = 1;
+}
+function endShape(){
+  const sh = SW.shape;
+  burst(sh ? sh.cx : W/2, sh ? sh.cy : H/2);
+  if (sh && sh.kind === 'strokes'){ WR.strokes = []; WR.cur = null; }
+  SW.shape = null; setState(idleState());
+}
+
+/* --- lấy điểm từ hình vẽ ẩn (chữ, nét, giọt nước) --- */
+const OC = document.createElement('canvas');
+const octx = OC.getContext('2d', { willReadFrequently: true });
+function ocBegin(){
+  if (OC.width !== W || OC.height !== H){ OC.width = W; OC.height = H; }
+  octx.setTransform(1,0,0,1,0,0); octx.globalCompositeOperation = 'source-over'; octx.clearRect(0, 0, W, H);
+  return octx;
+}
+function samplePts(target, colorOf){
+  const d = octx.getImageData(0, 0, W, H).data;
+  let c2 = 0;
+  for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 2) if (d[(y*W + x)*4 + 3] > 128) c2++;
+  if (!c2) return null;
+  const s = Math.max(2, Math.round(2*Math.sqrt(c2/target)));
+  const px = [], py = [], pc = [];
+  for (let y = 0; y < H; y += s) for (let x = 0; x < W; x += s){
+    const o = (y*W + x)*4;
+    if (d[o + 3] > 128){ px.push(x + (Math.random() - .5)*s*.6); py.push(y + (Math.random() - .5)*s*.6); pc.push(colorOf ? colorOf(d[o], d[o+1], d[o+2]) : -1); }
+  }
+  for (let i = px.length - 1; i > 0; i--){
+    const j = (Math.random()*(i + 1))|0;
+    [px[i], px[j]] = [px[j], px[i]]; [py[i], py[j]] = [py[j], py[i]]; [pc[i], pc[j]] = [pc[j], pc[i]];
+  }
+  return { px: Float32Array.from(px), py: Float32Array.from(py), pc: Int8Array.from(pc), count: px.length };
+}
+function makeShape(kind, pts, o = {}){
+  if (!pts || !pts.count) return false;
+  let sx = 0, sy = 0;
+  for (let j = 0; j < pts.count; j++){ sx += pts.px[j]; sy += pts.py[j]; }
+  SW.shape = Object.assign({ kind, cx: sx/pts.count, cy: sy/pts.count, launch: null, formT: 1, hold: 3, sub: '' }, pts, o);
+  for (let i = 0; i < MAXN; i++){
+    const j = i % pts.count; TI[i] = j;
+    DL[i] = o.delayOf ? o.delayOf(pts.px[j]) : 0;
+  }
+  setState('shape');
+  return true;
+}
+
+/* --- Tên (Kiểu B) --- */
+function layoutName(name){
+  name = name.normalize('NFC').trim();
+  let size = fitSize(name, BASE()*0.2, W*0.88), lines = [name];
+  if (size < BASE()*0.12 && name.includes(' ')){
+    let best = -1;
+    for (let i = 0; i < name.length; i++) if (name[i] === ' ' && (best < 0 || Math.abs(i - name.length/2) < Math.abs(best - name.length/2))) best = i;
+    lines = [name.slice(0, best), name.slice(best + 1)];
+    size = Math.min(fitSize(lines[0], BASE()*0.17, W*0.88), fitSize(lines[1], BASE()*0.17, W*0.88));
+  }
+  return { lines, size };
+}
+function drawNameTo(c, lay, cy){
+  c.font = `900 ${lay.size}px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const lh = lay.size*1.12;
+  lay.lines.forEach((l, k) => c.fillText(l, W/2, cy + (k - (lay.lines.length - 1)/2)*lh));
+}
+function launchName(from){
+  if (SW.state === 'shape') return;
+  const name = $('#nmName').value.trim();
+  if (!name){ toast('Nhập tên trước đã'); return; }
+  const lay = layoutName(name), cy = H*(fmt === '916' ? 0.42 : 0.44);
+  const c = ocBegin(); c.fillStyle = '#fff'; drawNameTo(c, lay, cy);
+  from = from || (PH.has ? { x: PH.cx, y: PH.cy } : { x: W/2, y: H*0.85 });
+  makeShape('name', samplePts(SW.n*0.95), { launch: from, formT: 1.3, hold: 3.6, lay, ty: cy,
+    sub: $('#nmSub').value.trim(), delayOf: px => 0.12 + (px/W)*0.5 + Math.random()*0.12 });
+}
+/* --- Chữ CNQ (Vạn Giọt + mở đầu) --- */
+function shapeCNQ(sub = '', o = {}){
+  const c = ocBegin(), size = fitSize('CNQ', BASE()*0.46, W*0.8), cy = H*(fmt === '916' ? 0.43 : 0.44);
+  c.font = `900 ${size}px ${FONT}`; c.textBaseline = 'middle'; c.textAlign = 'left';
+  const ws = ['C','N','Q'].map(ch => c.measureText(ch).width), tot = ws.reduce((a, b) => a + b, 0);
+  let x = W/2 - tot/2;
+  ['#f00', '#0f0', '#00f'].forEach((col, k) => { c.fillStyle = col; c.fillText('CNQ'[k], x, cy); x += ws[k]; });
+  const colorOf = SW.style === 'drop' ? (r, g) => r > 128 ? 0 : g > 128 ? 2 : 4 : (r, g) => r > 128 ? 0 : g > 128 ? 2 : 1;
+  makeShape('cnq', samplePts(SW.n*0.95, colorOf), Object.assign({ formT: 0.9, hold: 2.6, sub, subY: cy + size*0.6, size }, o));
+}
+/* --- Giọt nước dễ thương --- */
+function shapeMascot(){
+  const c = ocBegin(), R = BASE()*0.2, cx = W/2, cy = H*(fmt === '916' ? 0.52 : 0.6);
+  const p = new Path2D();
+  p.moveTo(cx, cy - 2.0*R);
+  p.bezierCurveTo(cx + 0.25*R, cy - 1.45*R, cx + R, cy - 0.85*R, cx + R, cy);
+  p.arc(cx, cy, R, 0, Math.PI, false);
+  p.bezierCurveTo(cx - R, cy - 0.85*R, cx - 0.25*R, cy - 1.45*R, cx, cy - 2.0*R);
+  c.fillStyle = '#f00'; c.fill(p);
+  c.fillStyle = '#0f0';
+  for (const s of [-1, 1]){ c.beginPath(); c.arc(cx + s*0.6*R, cy + 0.22*R, 0.14*R, 0, Math.PI*2); c.fill(); }
+  c.globalCompositeOperation = 'destination-out';
+  for (const s of [-1, 1]){ c.beginPath(); c.ellipse(cx + s*0.36*R, cy - 0.12*R, 0.13*R, 0.17*R, 0, 0, Math.PI*2); c.fill(); }
+  c.lineWidth = 0.09*R; c.lineCap = 'round';
+  c.beginPath(); c.arc(cx, cy + 0.08*R, 0.26*R, 0.18*Math.PI, 0.82*Math.PI); c.stroke();
+  c.globalCompositeOperation = 'source-over'; c.fillStyle = '#00f';
+  for (const s of [-1, 1]){ c.beginPath(); c.arc(cx + s*0.36*R - 0.04*R, cy - 0.18*R, 0.055*R, 0, Math.PI*2); c.fill(); }
+  const colorOf = (r, g, b) => b > 128 ? 3 : g > 128 ? 2 : -1;
+  makeShape('mascot', samplePts(SW.n*0.95, colorOf), { formT: 1.0, hold: 2.4 });
+}
+
+/* --- Viết tay trên không (Kiểu A) --- */
+const WR = { strokes: [], cur: null, drawing: false, fistAt: 0, lastSwing: 0 };
+function strokeLen(){
+  let L = 0;
+  for (const s of WR.strokes) for (let i = 1; i < s.length; i++) L += dist(s[i], s[i-1]);
+  return L;
+}
+function strokesPath(c){
+  for (const s of WR.strokes){
+    if (!s.length) continue;
+    c.moveTo(s[0].x, s[0].y);
+    if (s.length === 1){ c.lineTo(s[0].x + 0.1, s[0].y); continue; }
+    for (let i = 1; i < s.length - 1; i++){ const m = mid(s[i], s[i+1]); c.quadraticCurveTo(s[i].x, s[i].y, m.x, m.y); }
+    c.lineTo(s[s.length-1].x, s[s.length-1].y);
+  }
+}
+function formStrokes(){
+  if (SW.state === 'shape') return;
+  if (strokeLen() < 40){ toast('Chưa có nét — giơ ngón trỏ để vẽ trước'); return; }
+  WR.drawing = false; WR.cur = null;
+  const c = ocBegin(); c.strokeStyle = '#fff'; c.lineWidth = 14; c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath(); strokesPath(c); c.stroke();
+  makeShape('strokes', samplePts(SW.n*0.95), { formT: 1.0, hold: 3.0 });
+}
+function clearStrokes(){ WR.strokes = []; WR.cur = null; }
+function drawStrokes(now){
+  if (!WR.strokes.length) return;
+  let a = 1;
+  if (SW.state === 'shape' && SW.shape && SW.shape.kind === 'strokes') a = clamp(1 - (now - SW.t0)/600, 0, 1);
+  if (a <= 0) return;
+  const sword = SW.style === 'sword';
+  ctx.save(); ctx.globalAlpha = a; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath(); strokesPath(ctx);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = sword ? 'rgba(255,200,60,.35)' : 'rgba(8,126,245,.45)'; ctx.lineWidth = 24; ctx.stroke();
+  ctx.strokeStyle = sword ? 'rgba(255,233,160,.9)' : 'rgba(150,210,255,.9)'; ctx.lineWidth = 8; ctx.stroke();
+  ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.restore();
+}
+
+/* --- Bàn tay chính (làm mượt đầu ngón trỏ) --- */
+const PH = { has: false, seen: 0, x: 0, y: 0, cx: 0, cy: 0, mx: 0, my: 0, mcx: 0, mcy: 0, vx: 0, vy: 0, cls: 'none', pend: '', pc: 0, up: false };
+function fingerRatio(h, tip, mcp){ return dist(h.pts[0], h.pts[tip]) / (dist(h.pts[0], h.pts[mcp]) || 1); }
+function classifyHand(h){
+  if (h.gesture === 'Thumb_Up' && h.score > .5) return 'thumb';
+  const r = [fingerRatio(h, 8, 5), fingerRatio(h, 12, 9), fingerRatio(h, 16, 13), fingerRatio(h, 20, 17)];
+  const ext = r.map(v => v > 1.55), curl = r.map(v => v < 1.3);
+  if (h.gesture === 'Pointing_Up' && h.score > .5) return 'point';
+  if (ext[0] && curl[1] && curl[2]) return 'point';
+  if (h.gesture === 'Closed_Fist' && h.score > .5) return 'fist';
+  if (h.gesture === 'Open_Palm' && h.score > .5) return 'open';
+  if (curl.every(Boolean)) return 'fist';
+  if (ext.every(Boolean)) return 'open';
+  return 'other';
+}
+function updatePrimaryHand(hs, now){
+  for (const h of hs){ h.cls = classifyHand(h); h.tip = h.pts[8]; }
+  if (!hs.length) return;
+  const ref = { x: PH.mcx, y: PH.mcy };
+  const best = PH.has ? hs.reduce((a, b) => dist(a.center, ref) < dist(b.center, ref) ? a : b) : hs.reduce((a, b) => a.scale > b.scale ? a : b);
+  if (!PH.has){ PH.x = best.tip.x; PH.y = best.tip.y; PH.cx = best.center.x; PH.cy = best.center.y; PH.vx = PH.vy = 0; }
+  PH.has = true; PH.seen = now;
+  PH.mx = best.tip.x; PH.my = best.tip.y; PH.mcx = best.center.x; PH.mcy = best.center.y;
+  PH.up = best.pts[8].y < best.pts[5].y - 0.6*best.scale;
+  if (best.cls === PH.pend) PH.pc++; else { PH.pend = best.cls; PH.pc = 1; }
+  if (PH.pc >= 2) PH.cls = best.cls;
+}
+function smoothPrimaryHand(dt, now){
+  if (!PH.has) return;
+  if (now - PH.seen > 350){ PH.has = false; PH.cls = 'none'; PH.pend = ''; return; }
+  const f = 1 - Math.exp(-dt*22), ox = PH.cx, oy = PH.cy;
+  PH.x += (PH.mx - PH.x)*f; PH.y += (PH.my - PH.y)*f;
+  PH.cx += (PH.mcx - PH.cx)*f; PH.cy += (PH.mcy - PH.cy)*f;
+  PH.vx = PH.vx*0.7 + (PH.cx - ox)/Math.max(dt, 0.008)*0.3; PH.vy = PH.vy*0.7 + (PH.cy - oy)/Math.max(dt, 0.008)*0.3;
+  // nét vẽ theo đầu ngón trỏ
+  if (WR.drawing){
+    if (!WR.cur){ WR.cur = []; WR.strokes.push(WR.cur); }
+    const lastP = WR.cur[WR.cur.length - 1];
+    if (!lastP || dist(lastP, PH) > 3) WR.cur.push({ x: PH.x, y: PH.y });
+    let total = 0; for (const s of WR.strokes) total += s.length;
+    if (total > 3000) WR.drawing = false;
+  }
+}
+/* lịch sử cổ tay (cho dòng chảy theo đường quạt tay) */
+const WH = [];
+function recordWrists(now){
+  const p = T.pose;
+  if (p && vis(p.lW) && vis(p.rW)) WH.push({ t: now, l: { x: p.lW.x, y: p.lW.y }, r: { x: p.rW.x, y: p.rW.y } });
+  while (WH.length && now - WH[0].t > 2500) WH.shift();
+}
+
+/* --- Nhận cử chỉ cho bầy hạt --- */
+const SG = { lastTogether: 0 };
+function detectSwarm(now){
+  if (!armed || SW.intro || mode === 'fx') return;
+  const cls = PH.has ? PH.cls : 'none';
+  const busy = SW.state === 'shape' || SW.state === 'wave' || SW.state === 'stream';
+  const p = T.pose;
+  let M = null;
+  if (p && vis(p.lS) && vis(p.rS)){ M = bodyMetrics(p); if (M.U < 18) M = null; }
+  let dbg = `tay:${cls} `;
+  if (mode === 'write'){
+    if (writeKind === 'A'){
+      WR.drawing = cls === 'point' && !busy;
+      if (!WR.drawing) WR.cur = null;
+      if (hold('wOpen', cls === 'open' && !busy, now, 350)){ resetHold('wOpen'); if (strokeLen() > 40) formStrokes(); }
+    } else {
+      WR.drawing = false;
+      if (hold('bFist', cls === 'fist', now, 220)) WR.fistAt = now;
+      if (cls === 'open' && WR.fistAt && now - WR.fistAt < 1000 && !busy){ WR.fistAt = 0; launchName({ x: PH.cx, y: PH.cy }); }
+      if (M && !busy && now - WR.lastSwing > 1500){
+        for (const w of [p.lW, p.rW]){
+          if (vis(w) && w.y < M.S.y + 0.6*M.U && Math.hypot(w.vx, w.vy) > 5.5*M.U){ WR.lastSwing = now; launchName({ x: w.x, y: w.y }); break; }
+        }
+      }
+    }
+    G.dbg = dbg; return;
+  }
+  // ---- Vạn Giọt ----
+  if (busy){ G.dbg = dbg + '(đang diễn)'; return; }
+  if (M){
+    const over = vis(p.lW) && vis(p.rW) && p.lW.y < p.nose.y - 0.3*M.U && p.rW.y < p.nose.y - 0.3*M.U;
+    if (hold('dOver', over, now, 500)){ resetHold('dOver'); shapeMascot(); return; }
+  }
+  if (hold('dPoint', cls === 'point' && PH.up, now, 1000)){ resetHold('dPoint'); shapeCNQ(); return; }
+  if (hold('dFist', cls === 'fist', now, 250) && SW.state !== 'sphere'){
+    SW.sphereC = { x: PH.cx, y: PH.cy }; setState('sphere');
+  }
+  if (SW.state === 'sphere' && cls === 'fist') SW.sphereTarget = { x: PH.cx, y: PH.cy };
+  let preparing = false;
+  if (M && vis(p.lW) && vis(p.rW)){
+    const dW = dist(p.lW, p.rW), wy = (p.lW.y + p.rW.y)/2;
+    const speed = Math.max(Math.hypot(p.lW.vx, p.lW.vy), Math.hypot(p.rW.vx, p.rW.vy));
+    preparing = (dW < 1.0*M.U && wy < M.S.y + 1.2*M.U) || speed > 2*M.U;
+    const together = dW < 1.0*M.U && wy > M.S.y - 1.2*M.U && wy < M.Hm.y + 0.3*M.U;
+    if (together) SG.lastTogether = now;
+    const opp = Math.sign(p.lW.x - M.S.x) !== Math.sign(p.rW.x - M.S.x);
+    const spread = dW > 2.2*M.U && opp;
+    const since = now - SG.lastTogether;
+    dbg += `hai tay:${together ? 'chụm' : spread ? 'dang' : '–'} `;
+    if (spread && SG.lastTogether && since > 100 && since < 1400){
+      SG.lastTogether = 0;
+      if (SW.state === 'sphere') startWave(); else startStream(since);
+      G.dbg = dbg; return;
+    }
+  }
+  const openMs = SW.state === 'sphere' ? 450 : 300;
+  if (hold('dOpen', cls === 'open' && !(SW.state === 'sphere' && preparing), now, openMs) && SW.state !== 'float'){
+    resetHold('dOpen');
+    if (SW.state === 'sphere') burst(SW.sphereC.x, SW.sphereC.y, 0.6);
+    setState('float');
+  }
+  G.dbg = dbg;
+}
+function startSphere(){
+  SW.sphereC = PH.has ? { x: PH.cx, y: PH.cy } : { x: W/2, y: H*0.45 };
+  SW.sphereTarget = { ...SW.sphereC }; setState('sphere');
+}
+function startWave(){
+  if (SW.state === 'sphere') burst(SW.sphereC.x, SW.sphereC.y, 0.5);
+  setState('wave');
+}
+function resample(pts, m){
+  const out = new Float32Array(m*2);
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i-1] + dist(pts[i], pts[i-1]));
+  const L = cum[cum.length - 1] || 1;
+  let j = 0;
+  for (let k = 0; k < m; k++){
+    const d = L*k/(m - 1);
+    while (j < pts.length - 2 && cum[j+1] < d) j++;
+    const seg = (cum[j+1] - cum[j]) || 1, f = clamp((d - cum[j])/seg, 0, 1);
+    const a = pts[j], b = pts[Math.min(j+1, pts.length - 1)];
+    out[2*k] = a.x + (b.x - a.x)*f; out[2*k+1] = a.y + (b.y - a.y)*f;
+  }
+  return out;
+}
+function startStream(sinceMs){
+  const now = performance.now();
+  let seg = sinceMs ? WH.filter(e => e.t >= now - sinceMs - 150) : [];
+  let L = seg.map(e => e.l), R = seg.map(e => e.r);
+  const len = a => a.reduce((s, q, i) => i ? s + dist(q, a[i-1]) : 0, 0);
+  if (L.length < 3 || len(L) < 60 || len(R) < 60){
+    const cx = W/2, cy = H*0.48, arc = (sx) => Array.from({ length: 12 }, (_, i) => {
+      const t = i/11; return { x: cx + sx*(20 + t*W*0.42), y: cy - Math.sin(t*Math.PI)*H*0.06 + t*H*0.02 };
+    });
+    L = arc(-1); R = arc(1);
+  }
+  SW.paths = [resample(L, 48), resample(R, 48)];
+  setState('stream');
+}
+
+/* --- Đoạn mở đầu 3 giây --- */
+async function playIntro(variant){
+  if (SW.intro || !stream) return;
+  const rec = $('#introRec').checked && canRecord() && !(recorder && recorder.state === 'recording');
+  setPanel(false); active = null;
+  const prevBg = SW.bgDark;
+  SW.bgDark = variant === 'dark';
+  armed = false;
+  if (rec) await startRec();
+  for (let i = 0; i < SW.n; i++){ X[i] = rnd(-0.1*W, 1.1*W); Y[i] = rnd(-0.1*H, 1.1*H); VX[i] = rnd(-60, 60); VY[i] = rnd(-60, 60); }
+  SW.shape = null; SW.alpha = 0; SW.fade = 0;
+  SW.intro = { t0: performance.now(), stage: 0, rec, prevBg, mul: 0, sphere: 0.3 };
+  setState('float');
+}
+function introTick(now){
+  const I = SW.intro, t = (now - I.t0)/1000;
+  if (I.stage === 0 && t > 0.45){ I.stage = 1; SW.sphereC = { x: W/2, y: H*0.45 }; SW.sphereTarget = { ...SW.sphereC }; setState('sphere'); }
+  if (I.stage === 1 && t > 1.3){ I.stage = 2; burst(W/2, H*0.45, 0.45); shapeCNQ('Châu Nhật Quân', { formT: 0.45, hold: 0.75 }); }
+  I.sphere = clamp((t - 0.45)/0.6, 0.25, 1);
+  I.mul = t < 0.3 ? t/0.3 : t > 2.55 ? clamp((3.0 - t)/0.45, 0, 1) : 1;
+  if (t > 3.05){
+    if (I.rec) stopRec();
+    SW.bgDark = I.prevBg; SW.intro = null; armed = true; SW.alpha = 0; setState(idleState());
+    if (!I.rec) setPanel(true);
+  }
+}
+
+/* --- Cập nhật vật lý bầy hạt --- */
+function swarmUpdate(dt, now){
+  if (SW.intro) introTick(now);
+  let ts = (now - SW.t0)/1000;
+  const sh = SW.shape;
+  if (SW.state === 'shape' && sh && ts > sh.formT + sh.hold){ endShape(); ts = 0; }
+  if (SW.state === 'wave' && ts > 2.6){ setState(idleState()); SW.fade = 1; ts = 0; }
+  if (SW.state === 'stream' && ts > 2.4){ burst(W/2, H/2, 0.3); setState(idleState()); ts = 0; }
+  const st = SW.state, n = SW.n, gt = now/1000, sword = SW.style === 'sword';
+  // tâm bám tay
+  const f = 1 - Math.exp(-dt*8);
+  if (PH.has){
+    const tx = WR.drawing ? PH.x : PH.cx, ty = WR.drawing ? PH.y : PH.cy;
+    if (!SW.hasCenter){ SW.center = { x: tx, y: ty }; }
+    SW.center.x += (tx - SW.center.x)*f; SW.center.y += (ty - SW.center.y)*f;
+    SW.hasCenter = true; SW.lastCenter = now;
+  } else if (now - SW.lastCenter > 900) SW.hasCenter = false;
+  if (SW.sphereTarget){ const g = 1 - Math.exp(-dt*12); SW.sphereC.x += (SW.sphereTarget.x - SW.sphereC.x)*g; SW.sphereC.y += (SW.sphereTarget.y - SW.sphereC.y)*g; }
+  SW.fade = Math.max(0, SW.fade - dt/1.6);
+  let tgtA = st === 'float' ? (SW.bgDark ? 0.75 : 0.55) : st === 'follow' ? 0.85 : 1;
+  if (SW.intro) tgtA = SW.intro.mul;
+  SW.alpha += (tgtA - SW.alpha)*(1 - Math.exp(-dt*(SW.intro ? 20 : 4)));
+  // tay khuấy hạt
+  const stir = [];
+  if (st === 'float' || st === 'follow'){
+    const add = (x, y, vx, vy) => { if (vx*vx + vy*vy > 150*150){ const r = BASE()*0.2; stir.push({ x, y, vx, vy, r, r2: r*r }); } };
+    const p = T.pose;
+    if (p){ if (vis(p.lW)) add(p.lW.x, p.lW.y, p.lW.vx, p.lW.vy); if (vis(p.rW)) add(p.rW.x, p.rW.y, p.rW.vx, p.rW.vy); }
+    else if (PH.has) add(PH.cx, PH.cy, PH.vx, PH.vy);
+  }
+  const R = SW.sphereR*(SW.intro ? SW.intro.sphere*1.25 : 1);
+  const rot = ts*1.9, cr = Math.cos(rot), sr = Math.sin(rot), ct = Math.cos(0.4), stt = Math.sin(0.4);
+  const cx = SW.center.x, cy = SW.center.y, fr = BASE()*0.17, follow = st === 'follow' && SW.hasCenter;
+  const scx = SW.sphereC.x, scy = SW.sphereC.y;
+  const waveX = -0.3*W + 1.6*W*(ts/2.4), waveW = 0.2*W, waveBase = H*0.72;
+  const paths = SW.paths, TAU = Math.PI*2;
+  for (let i = 0; i < n; i++){
+    const r1 = R1[i], r2 = R2[i], r3 = R3[i];
+    let tx, ty, k, damp = 1.3, dep = 1;
+    if (follow){
+      const a = r1*TAU + gt*(0.6 + r2*1.2)*(r3 > 0.5 ? 1 : -1), rad = fr*(0.12 + 0.88*Math.sqrt(r2));
+      tx = cx + Math.cos(a)*rad; ty = cy + Math.sin(a)*rad; k = 4 + 14*r3*r3; damp = 1.0;
+    } else if (st === 'sphere'){
+      const x1 = UX[i]*cr - UZ[i]*sr, z1 = UX[i]*sr + UZ[i]*cr;
+      const y2 = UY[i]*ct - z1*stt, z2 = UY[i]*stt + z1*ct, rr = R*(0.82 + 0.18*r1);
+      tx = scx + x1*rr; ty = scy + y2*rr; dep = 0.35 + 0.65*(z2 + 1)/2; k = 30 + 20*r3;
+    } else if (st === 'wave'){
+      const x0 = -0.08*W + r1*1.16*W, g = Math.exp(-Math.pow((x0 - waveX)/waveW, 2));
+      tx = x0 + g*30; ty = waveBase - H*0.26*g*(1 - r2*0.85) + Math.sin(x0/60 + ts*6 + r3*3)*12 + r2*H*0.1; k = 24; damp = 1.2;
+    } else if (st === 'stream' && paths){
+      const P = paths[r1 < 0.5 ? 0 : 1], m = P.length/2, s = (r2 + ts*0.75) % 1, fi = s*(m - 1), j = fi|0, fj = fi - j, j2 = Math.min(j + 1, m - 1);
+      const ax0 = P[2*j], ay0 = P[2*j+1], dx = P[2*j2] - ax0, dy = P[2*j2+1] - ay0, L = Math.hypot(dx, dy) || 1, off = (r3 - 0.5)*(20 + 60*s);
+      tx = ax0 + dx*fj - dy/L*off; ty = ay0 + dy*fj + dx/L*off; k = 40; damp = 1.1;
+      if (s < 0.04){ X[i] = tx; Y[i] = ty; VX[i] *= 0.2; VY[i] *= 0.2; }
+      dep = Math.min(1, s*12, (1 - s)*5);
+    } else if (st === 'shape' && sh){
+      const j = TI[i];
+      if (sh.launch && ts < DL[i]){ tx = sh.launch.x + Math.cos(r1*TAU)*18; ty = sh.launch.y + Math.sin(r1*TAU)*18; k = 90; damp = 1.4; }
+      else {
+        tx = sh.px[j] + Math.sin(gt*2.5 + r1*40)*1.2; ty = sh.py[j] + Math.cos(gt*2.2 + r2*40)*1.2;
+        k = ts < DL[i] + 0.6 ? 45 + 30*r3 : 110; damp = 1.5;
+      }
+    } else {
+      tx = HX[i] + Math.sin(gt*0.5 + r1*30)*45*(0.4 + r2); ty = HY[i] + Math.cos(gt*0.4 + r2*30)*45*(0.4 + r3); k = 1.5 + 2*r3; damp = 1.2;
+    }
+    DEP[i] = dep;
+    const c = damp*Math.sqrt(k);
+    let vx = VX[i], vy = VY[i];
+    let ax = (tx - X[i])*k - vx*c, ay = (ty - Y[i])*k - vy*c;
+    for (let s = 0; s < stir.length; s++){
+      const q = stir[s], dx = X[i] - q.x, dy = Y[i] - q.y, d2 = dx*dx + dy*dy;
+      if (d2 < q.r2){ const w = 1 - Math.sqrt(d2)/q.r; ax += q.vx*w*6; ay += q.vy*w*6; }
+    }
+    vx += ax*dt; vy += ay*dt;
+    const sp2 = vx*vx + vy*vy;
+    if (sp2 > 9e6){ const sc = 3000/Math.sqrt(sp2); vx *= sc; vy *= sc; }
+    VX[i] = vx; VY[i] = vy; X[i] += vx*dt; Y[i] += vy*dt;
+    if (sword){
+      const want = sp2 > 6400 ? Math.atan2(vy, vx) : (st === 'shape' ? -Math.PI/2 : ANG[i]);
+      let d = want - ANG[i]; d = ((d + Math.PI) % TAU + TAU) % TAU - Math.PI;
+      ANG[i] += d*Math.min(1, dt*10);
+    }
+  }
+}
+function swarmDraw(){
+  const n = SW.n, sh = SW.shape, shapeOn = SW.state === 'shape' && sh;
+  const fadeMul = SW.fade > 0 ? 1 - 0.65*Math.sin(Math.PI*(1 - SW.fade)) : 1;
+  const A = SW.alpha*fadeMul;
+  if (A < 0.01) return;
+  ctx.globalCompositeOperation = 'lighter';
+  if (SW.style === 'drop'){
+    const pB = new Path2D(), pO = new Path2D();
+    for (let i = 0; i < n; i++){
+      const vx = VX[i], vy = VY[i];
+      if (vx*vx + vy*vy > 90000){ const p = COL[i] === 2 ? pO : pB; p.moveTo(X[i], Y[i]); p.lineTo(X[i] - vx*0.035, Y[i] - vy*0.035); }
+    }
+    ctx.globalAlpha = A*0.5; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgb(120,195,255)'; ctx.stroke(pB);
+    ctx.strokeStyle = 'rgb(255,150,80)'; ctx.stroke(pO);
+    const sm = shapeOn ? 0.9 : 1;
+    if (!SW.bgDark) ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < n; i++){
+      const x = X[i], y = Y[i];
+      if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+      const pc = shapeOn ? sh.pc[TI[i]] : -1, c = pc >= 0 ? pc : COL[i];
+      const s = (3.2 + 4.2*R3[i])*sm;
+      ctx.globalAlpha = A*DEP[i]*(0.6 + 0.4*R2[i]);
+      ctx.drawImage(DSPR[c], x - s, y - s, s*2, s*2);
+    }
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < n; i++){
+      const x = X[i], y = Y[i];
+      if (x < -30 || y < -30 || x > W + 30 || y > H + 30) continue;
+      const pc = shapeOn ? sh.pc[TI[i]] : -1, c = pc >= 0 ? pc : COL[i];
+      const s = shapeOn ? 20 + 8*R3[i] : 22 + 14*R3[i];
+      let ai = Math.round(ANG[i]/(Math.PI*2)*ANGS) % ANGS; if (ai < 0) ai += ANGS;
+      ctx.globalAlpha = A*DEP[i]*(0.7 + 0.3*R2[i]);
+      ctx.drawImage(SATLAS, ai*CELL, c*CELL, CELL, CELL, x - s/2, y - s/2, s, s);
+    }
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+}
+function subPill(text, y, size, a){
+  if (!text || a <= 0) return;
+  ctx.save(); ctx.globalAlpha = a;
+  const s = fitSize(text, size, W*0.84, 800); setFont(s, 800);
+  const tw = ctx.measureText(text).width, bw = tw + s*1.4, bh = s*1.9;
+  ctx.fillStyle = 'rgba(7,30,49,.8)'; roundRect(W/2 - bw/2, y - bh/2, bw, bh, bh/2); ctx.fill();
+  const g = ctx.createLinearGradient(W/2 - bw/2, 0, W/2 + bw/2, 0);
+  g.addColorStop(0, C.blue); g.addColorStop(0.55, C.orange); g.addColorStop(1, C.green);
+  ctx.lineWidth = 3; ctx.strokeStyle = g; ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, W/2, y + 1);
+  ctx.restore();
+}
+function drawSwarmOverlay(now){
+  const sh = SW.shape;
+  if (!sh || SW.state !== 'shape') return;
+  const ts = (now - SW.t0)/1000;
+  const out = clamp((sh.formT + sh.hold - ts)/0.4, 0, 1)*(SW.intro ? SW.intro.mul : 1);
+  if (sh.kind === 'name'){
+    const formed = clamp((ts - sh.formT*0.8)/0.6, 0, 1);
+    ctx.save(); ctx.globalAlpha = 0.2*formed*out; ctx.fillStyle = '#fff'; drawNameTo(ctx, sh.lay, sh.ty); ctx.restore();
+    const subA = clamp((ts - sh.formT)/0.5, 0, 1)*out;
+    const yb = sh.ty + (sh.lay.lines.length/2)*sh.lay.size*1.12 + BASE()*0.06;
+    subPill(sh.sub, yb, BASE()*0.055, subA);
+  } else if (sh.kind === 'cnq' && sh.sub){
+    subPill(sh.sub, sh.subY + BASE()*0.03, BASE()*0.06, clamp((ts - sh.formT)/0.35, 0, 1)*out);
+  }
+}
+/* --- Nền tối: ánh sao + bọt nước mờ --- */
+const AMB = Array.from({ length: 70 }, () => ({ x: Math.random(), y: Math.random(), r: rnd(0.6, 2.2), sp: rnd(0.01, 0.04), ph: rnd(0, 6.28), b: Math.random() < 0.4 }));
+let darkGlow = null;
+function drawDarkBg(now){
+  ctx.fillStyle = C.navy; ctx.fillRect(0, 0, W, H);
+  if (!darkGlow || darkGlow.width !== W || darkGlow.height !== H){
+    darkGlow = document.createElement('canvas'); darkGlow.width = W; darkGlow.height = H;
+    const g = darkGlow.getContext('2d'), gr = g.createRadialGradient(W/2, H*0.42, 10, W/2, H*0.45, Math.hypot(W, H)*0.55);
+    gr.addColorStop(0, 'rgba(14,53,87,.9)'); gr.addColorStop(1, 'rgba(7,30,49,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  }
+  ctx.drawImage(darkGlow, 0, 0);
+  const t = now/1000;
+  for (const a of AMB){
+    if (a.b){
+      const y = ((a.y - t*a.sp) % 1 + 1) % 1, x = a.x + Math.sin(t*0.6 + a.ph)*0.012;
+      ctx.globalAlpha = 0.18; ctx.strokeStyle = '#9FD3FF'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x*W, y*H, a.r*4, 0, Math.PI*2); ctx.stroke();
+    } else {
+      ctx.globalAlpha = 0.12 + 0.35*(0.5 + 0.5*Math.sin(t*1.4 + a.ph*3));
+      ctx.fillStyle = '#E8F4FF'; ctx.beginPath(); ctx.arc(a.x*W, a.y*H, a.r, 0, Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+function drawFingerDots(){
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  const dot = (x, y) => { ctx.globalAlpha = 0.9; ctx.drawImage(SPR.white, x - 16, y - 16, 32, 32); ctx.globalAlpha = 1; ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI*2); ctx.fill(); };
+  if (PH.has) dot(PH.x, PH.y);
+  for (const h of T.hands){ if (!PH.has || dist(h.pts[8], { x: PH.mx, y: PH.my }) > 30) dot(h.pts[8].x, h.pts[8].y); }
+  ctx.restore();
+}
+/* --- tự giảm/tăng số hạt theo sức máy --- */
+const PERF = { acc: 0, good: 0 };
+function adaptSwarm(dt){
+  PERF.acc += dt; if (PERF.acc < 1) return; PERF.acc = 0;
+  if (SW.cost > 9 && SW.n > 500){ SW.n = Math.max(500, Math.floor(SW.n*0.8)); PERF.good = 0; }
+  else if (SW.cost < 5.5){ if (++PERF.good >= 3 && SW.n < SW.nMax){ SW.n = Math.min(SW.nMax, Math.floor(SW.n*1.1)); PERF.good = 0; } }
+  else PERF.good = 0;
+}
+function swarmFrame(dt, now){
+  smoothPrimaryHand(dt, now);
+  if (mode === 'write' && writeKind === 'A') drawStrokes(now);
+  if (!swarmOn()) return;
+  const t0 = performance.now();
+  swarmUpdate(dt, now); swarmDraw();
+  SW.cost = SW.cost*0.9 + (performance.now() - t0)*0.1;
+  adaptSwarm(dt);
+  drawSwarmOverlay(now);
+}
+
+/* --- Bảng điều khiển cho bầy hạt --- */
+function setMode(m){
+  mode = m; active = null; WR.drawing = false; WR.cur = null; SW.shape = null;
+  document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('#secFx').style.display = m === 'fx' ? '' : 'none';
+  $('#secWrite').style.display = m === 'write' ? '' : 'none';
+  $('#secDrops').style.display = m === 'drops' ? '' : 'none';
+  setState(idleState()); SW.alpha = 0;
+  for (let i = 0; i < SW.n; i++) rndHome(i);
+  try { localStorage.setItem('cnqfx-mode', m); } catch(e){}
+}
+function setStyle(s){
+  SW.style = s;
+  document.querySelectorAll('#styleSeg button').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+  try { localStorage.setItem('cnqfx-style', s); } catch(e){}
+}
+function setWriteKind(k){
+  writeKind = k; WR.drawing = false; WR.cur = null;
+  document.querySelectorAll('#wkSeg button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  $('#wA').style.display = k === 'A' ? '' : 'none'; $('#wB').style.display = k === 'B' ? '' : 'none';
+}
+function setBg(dark){
+  SW.bgDark = dark; const b = $('#bgBtn');
+  b.textContent = dark ? '📷 Hiện camera' : '🌙 Nền tối'; b.classList.toggle('on', dark);
+  try { localStorage.setItem('cnqfx-bg', dark ? '1' : '0'); } catch(e){}
+}
+const DROP_ACTS = [
+  ['✋', 'Tản ra', 'Xòe bàn tay', () => { if (SW.state === 'sphere') burst(SW.sphereC.x, SW.sphereC.y, 0.6); SW.shape = null; setState('float'); }],
+  ['✊', 'Quả cầu', 'Nắm tay', startSphere],
+  ['↔️', 'Con sóng', 'Đang có cầu: chụm 2 tay rồi kéo ra 2 bên', startWave],
+  ['🐸', 'Dòng chảy', 'Tay ếch: chụm trước ngực rồi quạt', () => startStream(0)],
+  ['☝️', 'Chữ CNQ', 'Chỉ ngón trỏ lên, giữ 1 giây', () => shapeCNQ()],
+  ['🙌', 'Giọt nước', 'Giơ hai tay qua đầu', shapeMascot],
+];
+const dl = $('#dropList');
+DROP_ACTS.forEach(([ic, t, how, fn], i) => {
+  const d = document.createElement('div'); d.className = 'fxi';
+  d.innerHTML = `<label><span>${ic} ${t}<small>${how}</small></span></label><button class="t" title="Thử (phím ${i+1})">▶</button>`;
+  d.querySelector('.t').onclick = fn; dl.appendChild(d);
+});
+document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+document.querySelectorAll('#styleSeg button').forEach(b => b.onclick = () => setStyle(b.dataset.s));
+document.querySelectorAll('#wkSeg button').forEach(b => b.onclick = () => setWriteKind(b.dataset.k));
+$('#bgBtn').onclick = () => setBg(!SW.bgDark);
+$('#formBtn').onclick = formStrokes;
+$('#clearBtn').onclick = () => { clearStrokes(); toast('Đã xóa nét', 1200); };
+$('#nameBtn').onclick = () => launchName();
+let nameIdx = -1;
+$('#nextBtn').onclick = () => {
+  const list = $('#nmList').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!list.length){ toast('Danh sách đang trống — mỗi dòng một tên'); return; }
+  nameIdx = (nameIdx + 1) % list.length;
+  $('#nmName').value = list[nameIdx].slice(0, 24);
+  toast(`Tên ${nameIdx + 1}/${list.length}: ${list[nameIdx]}`, 1800);
+  saveNames();
+};
+function saveNames(){ try { localStorage.setItem('cnqfx-names', JSON.stringify({ n: $('#nmName').value, s: $('#nmSub').value, l: $('#nmList').value })); } catch(e){} }
+['#nmName', '#nmSub', '#nmList'].forEach(s => $(s).addEventListener('input', saveNames));
+$('#introDark').onclick = () => playIntro('dark');
+$('#introCam').onclick = () => playIntro('cam');
+function swarmKey(k){
+  const i = parseInt(k, 10) - 1;
+  if (mode === 'drops' && DROP_ACTS[i]){ DROP_ACTS[i][3](); return true; }
+  if (mode === 'write'){
+    if (k === '1'){ writeKind === 'A' ? formStrokes() : launchName(); return true; }
+    if (k === '2'){ writeKind === 'A' ? clearStrokes() : $('#nextBtn').click(); return true; }
+  }
+  return false;
+}
+buildSprites();
+try {
+  const nm = JSON.parse(localStorage.getItem('cnqfx-names') || 'null');
+  if (nm){ $('#nmName').value = nm.n || ''; $('#nmSub').value = nm.s || ''; $('#nmList').value = nm.l || ''; }
+  setStyle(localStorage.getItem('cnqfx-style') || 'drop');
+  setBg(localStorage.getItem('cnqfx-bg') === '1');
+} catch(e){ setStyle('drop'); }
+setWriteKind('A');
+
 /* ---------- Khởi tạo ---------- */
 let savedFmt = '916'; try { savedFmt = localStorage.getItem('cnqfx-fmt') || '916'; } catch(e){}
 setFormat(savedFmt);
+let savedMode = 'fx'; try { savedMode = localStorage.getItem('cnqfx-mode') || 'fx'; } catch(e){}
+setMode(savedMode);
 // Công cụ kiểm tra: vẽ một hiệu ứng tại thời điểm t (giây), không cần camera
 function renderAt(id, t, data={}){
   P.length = 0; fire(id, data, true);
@@ -1113,7 +1827,7 @@ function renderAt(id, t, data={}){
   }
   drawTag(); active = null;
 }
-window.__cnq = { renderAt, setFormat, T, G, cooldown, WV, detectGestures, fire, get active(){ return active; }, bodyMetrics };
+window.__cnq = { drawSwarmOverlay, setState, SW, PH, WR, X, Y, setMode, setStyle, setBg, shapeCNQ, shapeMascot, launchName, startStream, startWave, startSphere, formStrokes, playIntro, detectSwarm, swarmUpdate, swarmDraw, drawDarkBg, renderAt, setFormat, T, G, cooldown, WV, detectGestures, fire, get active(){ return active; }, bodyMetrics };
 </script>
 </body>
 </html>
