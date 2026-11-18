@@ -1,0 +1,5 @@
+{
+  "ghiChu": "Danh sách file mẫu HLV (JSON xuất từ màn Ghi mẫu HLV) và video thị phạm. Thêm tên file vào 'files'; video đặt trong mau/video/ rồi khai báo theo số bài.",
+  "files": [],
+  "video": {}
+}
